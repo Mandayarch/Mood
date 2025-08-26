@@ -4,77 +4,85 @@
   <meta charset="UTF-8">
   <title>Mood Tracker</title>
   <style>
-    body { font-family: sans-serif; }
-    table { border-collapse: collapse; margin: 20px 0; }
-    td, th { border: 1px solid #000; padding: 10px; vertical-align: top; }
+    body { font-family: sans-serif; margin: 20px; }
+    h2 { margin-top: 50px; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 40px; }
+    td, th { border: 1px solid #000; padding: 8px; vertical-align: top; }
     select, textarea { width: 100%; }
-    textarea { height: 50px; }
+    textarea { height: 50px; resize: vertical; }
   </style>
 </head>
 <body>
-  <h1>Mood Tracker – August 2025</h1>
-  <table>
-    <tr>
-      <th>Day</th>
-      <th>Mood</th>
-      <th>Note</th>
-    </tr>
-    <tbody id="tracker"></tbody>
-  </table>
+  <h1>Mood Tracker</h1>
+  <div id="months"></div>
 
   <script>
-    const daysInMonth = 31; // August
-    const trackerBody = document.getElementById("tracker");
-    const moods = ["-3", "-2", "-1", "0", "1", "2", "3"];
+    const moods = ["-3,"-2","-1","0","1","2","3"];
 
-    // Load saved data
-    let saved = JSON.parse(localStorage.getItem("moodData")) || {};
+    // Months you want to track
+    const months = [
+      { name: "August 2025", days: 31, key: "aug2025", start: 26 },
+      { name: "September 2025", days: 30, key: "sep2025", start: 1 },
+      { name: "October 2025", days: 31, key: "oct2025", start: 1 },
+      { name: "November 2025", days: 30, key: "nov2025", start: 1 },
+      { name: "December 2025", days: 31, key: "dec2025", start: 1 }
+    ];
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      let tr = document.createElement("tr");
+    const container = document.getElementById("months");
 
-      // Day cell
-      let tdDay = document.createElement("td");
-      tdDay.textContent = day + " Aug";
-      tr.appendChild(tdDay);
+    months.forEach(m => {
+      let saved = JSON.parse(localStorage.getItem("moodData-"+m.key)) || {};
 
-      // Mood cell
-      let tdMood = document.createElement("td");
-      let select = document.createElement("select");
-      moods.forEach(m => {
-        let opt = document.createElement("option");
-        opt.value = m;
-        opt.textContent = m;
-        select.appendChild(opt);
-      });
-      if (saved[day] && saved[day].mood) {
-        select.value = saved[day].mood;
+      let heading = document.createElement("h2");
+      heading.textContent = m.name;
+      container.appendChild(heading);
+
+      let table = document.createElement("table");
+      let headerRow = document.createElement("tr");
+      headerRow.innerHTML = "<th>Day</th><th>Mood</th><th>Note</th>";
+      table.appendChild(headerRow);
+
+      for (let day = m.start; day <= m.days; day++) {
+        let tr = document.createElement("tr");
+
+        // Day
+        let tdDay = document.createElement("td");
+        tdDay.textContent = day;
+        tr.appendChild(tdDay);
+
+        // Mood
+        let tdMood = document.createElement("td");
+        let select = document.createElement("select");
+        moods.forEach(mood => {
+          let opt = document.createElement("option");
+          opt.value = mood;
+          opt.textContent = mood;
+          select.appendChild(opt);
+        });
+        if (saved[day] && saved[day].mood) select.value = saved[day].mood;
+        tdMood.appendChild(select);
+        tr.appendChild(tdMood);
+
+        // Note
+        let tdNote = document.createElement("td");
+        let note = document.createElement("textarea");
+        if (saved[day] && saved[day].note) note.value = saved[day].note;
+        tdNote.appendChild(note);
+        tr.appendChild(tdNote);
+
+        // Save events
+        function save() {
+          saved[day] = { mood: select.value, note: note.value };
+          localStorage.setItem("moodData-"+m.key, JSON.stringify(saved));
+        }
+        select.addEventListener("change", save);
+        note.addEventListener("input", save);
+
+        table.appendChild(tr);
       }
-      select.addEventListener("change", () => {
-        saveData(day, select.value, note.value);
-      });
-      tdMood.appendChild(select);
-      tr.appendChild(tdMood);
 
-      // Note cell
-      let tdNote = document.createElement("td");
-      let note = document.createElement("textarea");
-      if (saved[day] && saved[day].note) {
-        note.value = saved[day].note;
-      }
-      note.addEventListener("input", () => {
-        saveData(day, select.value, note.value);
-      });
-      tdNote.appendChild(note);
-      tr.appendChild(tdNote);
-
-      trackerBody.appendChild(tr);
-    }
-
-    function saveData(day, mood, note) {
-      saved[day] = { mood, note };
-      localStorage.setItem("moodData", JSON.stringify(saved));
-    }
+      container.appendChild(table);
+    });
   </script>
 </body>
 </html>
