@@ -1,88 +1,237 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
   <title>Mood Tracker</title>
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    h2 { margin-top: 50px; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 40px; }
-    td, th { border: 1px solid #000; padding: 8px; vertical-align: top; }
-    select, textarea { width: 100%; }
-    textarea { height: 50px; resize: vertical; }
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      display: flex;
+      gap: 20px;
+    }
+    .left {
+      width: 300px;
+    }
+    .right {
+      flex-grow: 1;
+      overflow-x: auto; /* allow scrolling */
+    }
+    .scroll-wrapper {
+      width: max-content; /* canvas won’t shrink */
+    }
   </style>
 </head>
 <body>
-  <h1>Mood Tracker</h1>
-  <div id="months"></div>
 
-  <script>
-    const moods = ["-3,"-2","-1","0","1","2","3"];
+<h2>Mood Tracker</h2>
 
-    // Months you want to track
-    const months = [
-      { name: "August 2025", days: 31, key: "aug2025", start: 26 },
-      { name: "September 2025", days: 30, key: "sep2025", start: 1 },
-      { name: "October 2025", days: 31, key: "oct2025", start: 1 },
-      { name: "November 2025", days: 30, key: "nov2025", start: 1 },
-      { name: "December 2025", days: 31, key: "dec2025", start: 1 }
-    ];
+<div class="container">
+  <div class="left">
+    <label for="date">Date:</label><br>
+    <input type="date" id="date" min="2025-08-27"><br><br>
 
-    const container = document.getElementById("months");
+    <label for="mood">Mood (-3 to +3):</label><br>
+    <select id="mood">
+      <option value="-3">-3</option>
+      <option value="-2">-2</option>
+      <option value="-1">-1</option>
+      <option value="0">0</option>
+      <option value="1">+1</option>
+      <option value="2">+2</option>
+      <option value="3">+3</option>
+    </select><br><br>
 
-    months.forEach(m => {
-      let saved = JSON.parse(localStorage.getItem("moodData-"+m.key)) || {};
+    <label for="note">Your Mood/Notes:</label><br>
+    <textarea id="note" rows="4" cols="30"></textarea><br><br>
 
-      let heading = document.createElement("h2");
-      heading.textContent = m.name;
-      container.appendChild(heading);
+    <button onclick="saveEntry()">Save</button>
+    <button onclick="loadEntry()">View</button>
+    <button onclick="resetEntry()">Reset</button>
+    <button onclick="showGraph()">Show Graph</button>
 
-      let table = document.createElement("table");
-      let headerRow = document.createElement("tr");
-      headerRow.innerHTML = "<th>Day</th><th>Mood</th><th>Note</th>";
-      table.appendChild(headerRow);
+    <h3>Saved Entry:</h3>
+    <div id="output"></div>
 
-      for (let day = m.start; day <= m.days; day++) {
-        let tr = document.createElement("tr");
+    <!-- Green Dot Inputs -->
+    <h3>Add smoked T:</h3>
+    <label for="dotDate">Date:</label><br>
+    <input type="date" id="dotDate" min="2025-08-27"><br><br>
 
-        // Day
-        let tdDay = document.createElement("td");
-        tdDay.textContent = day;
-        tr.appendChild(tdDay);
+    <label for="dotMood">Mood (-3 to +3):</label><br>
+    <select id="dotMood">
+      <option value="-3">-3</option>
+      <option value="-2">-2</option>
+      <option value="-1">-1</option>
+      <option value="0">0</option>
+      <option value="1">+1</option>
+      <option value="2">+2</option>
+      <option value="3">+3</option>
+    </select><br><br>
 
-        // Mood
-        let tdMood = document.createElement("td");
-        let select = document.createElement("select");
-        moods.forEach(mood => {
-          let opt = document.createElement("option");
-          opt.value = mood;
-          opt.textContent = mood;
-          select.appendChild(opt);
-        });
-        if (saved[day] && saved[day].mood) select.value = saved[day].mood;
-        tdMood.appendChild(select);
-        tr.appendChild(tdMood);
+    <button onclick="addGreenDot()">Smoked T</button>
 
-        // Note
-        let tdNote = document.createElement("td");
-        let note = document.createElement("textarea");
-        if (saved[day] && saved[day].note) note.value = saved[day].note;
-        tdNote.appendChild(note);
-        tr.appendChild(tdNote);
+  </div>
 
-        // Save events
-        function save() {
-          saved[day] = { mood: select.value, note: note.value };
-          localStorage.setItem("moodData-"+m.key, JSON.stringify(saved));
-        }
-        select.addEventListener("change", save);
-        note.addEventListener("input", save);
+  <div class="right">
+    <h3>Mood Graph:</h3>
+    <div class="scroll-wrapper">
+      <canvas id="graph" height="300" style="border:1px solid black;"></canvas>
+    </div>
+  </div>
+</div>
 
-        table.appendChild(tr);
-      }
+<script>
+function saveEntry() {
+  const date = document.getElementById("date").value;
+  const mood = document.getElementById("mood").value;
+  const note = document.getElementById("note").value;
 
-      container.appendChild(table);
-    });
-  </script>
+  if (!date) {
+    alert("Please select a date");
+    return;
+  }
+
+  const entry = { mood: mood, note: note };
+  localStorage.setItem("mood_" + date, JSON.stringify(entry));
+  alert("Saved for " + date);
+}
+
+function loadEntry() {
+  const date = document.getElementById("date").value;
+  if (!date) { alert("Please select a date"); return; }
+
+  const entry = localStorage.getItem("mood_" + date);
+  if (entry) {
+    const parsed = JSON.parse(entry);
+    document.getElementById("output").innerText =
+      "Mood: " + parsed.mood + "\nNotes: " + parsed.note;
+  } else {
+    document.getElementById("output").innerText = "No entry found for " + date;
+  }
+}
+
+function resetEntry() {
+  const date = document.getElementById("date").value;
+  if (!date) { alert("Please select a date"); return; }
+
+  const key = "mood_" + date;
+  if (localStorage.getItem(key)) {
+    localStorage.removeItem(key);
+    document.getElementById("output").innerText = "Entry for " + date + " has been reset.";
+    alert("Entry for " + date + " has been deleted.");
+  } else {
+    alert("No entry found for " + date);
+  }
+}
+
+function addGreenDot() {
+  const date = document.getElementById("dotDate").value;
+  const mood = parseInt(document.getElementById("dotMood").value);
+
+  if (!date) { alert("Please select a date"); return; }
+
+  // Store in localStorage
+  const key = "greenDot_" + date;
+  localStorage.setItem(key, mood);
+  alert("Smoked T added for " + date);
+
+  showGraph(); // redraw graph with the new dot
+}
+
+function showGraph() {
+  const canvas = document.getElementById("graph");
+  const ctx = canvas.getContext("2d");
+
+  const entries = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith("mood_")) {
+      const date = key.slice(5);
+      const entry = JSON.parse(localStorage.getItem(key));
+      entries.push({ date: date, mood: parseInt(entry.mood) });
+    }
+  }
+
+  entries.sort((a,b) => new Date(a.date)-new Date(b.date));
+
+  if (entries.length===0) { alert("No data to show!"); return; }
+
+  // Dynamic canvas width (50px per day, min 800)
+  const stepX = 50;
+  canvas.width = Math.max(entries.length * stepX + 100, 800);
+
+  // Clear & reset
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw axes
+  ctx.beginPath();
+  ctx.moveTo(50,20);
+  ctx.lineTo(50,250);
+  ctx.lineTo(canvas.width-30,250);
+  ctx.stroke();
+
+  // Y-axis labels (-3 to +3)
+  ctx.font = "12px Arial";
+  ctx.fillStyle = "black";
+  for (let i=-3;i<=3;i++) {
+    const y = 250 - ((i+3)*(230/6));
+    ctx.fillText(i, 25, y+4);  
+    ctx.beginPath();
+    ctx.moveTo(47,y);
+    ctx.lineTo(53,y);
+    ctx.stroke();
+  }
+
+  // Draw blue graph
+  ctx.beginPath();
+  ctx.strokeStyle = "blue";
+  for (let i=0;i<entries.length;i++) {
+    const x = 50 + i*stepX;
+    const y = 250 - ((entries[i].mood+3)*(230/6));
+    if(i===0){ctx.moveTo(x,y);} else {ctx.lineTo(x,y);}
+    ctx.fillRect(x-2,y-2,4,4);
+
+    // Short date label (MM-DD)
+    const d = new Date(entries[i].date);
+    const shortDate = (d.getMonth()+1).toString().padStart(2,"0") + "-" +
+                      d.getDate().toString().padStart(2,"0");
+
+    ctx.save();
+    ctx.translate(x, 270);
+    ctx.rotate(-0.5);
+    ctx.fillText(shortDate, 0, 0);
+    ctx.restore();
+  }
+  ctx.stroke();
+
+  // Draw green dots
+  ctx.fillStyle = "green";
+  for (let i = 0; i < entries.length; i++) {
+    const x = 50 + i * stepX;
+    const greenKey = "greenDot_" + entries[i].date;
+    if (localStorage.getItem(greenKey)) {
+      const greenMood = parseInt(localStorage.getItem(greenKey));
+      const y = 250 - ((greenMood + 3) * (230 / 6));
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  }
+}
+</script>
+
+<h2>Past year graph:</h2>
+<div style="display: flex; gap: 20px;">
+  <!-- Left column -->
+  <img src="bipgraph.png" alt="Left image" width="800px" height="400px">
+
+  <!-- Right column -->
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <img src="man.png" alt="Top right image" width="600px" height="155px">
+    <img src="mana.png" alt="Bottom right image" width="500px" height="150px">
+  </div>
+</div>
+
 </body>
 </html>
